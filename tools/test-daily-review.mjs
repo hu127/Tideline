@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {transform} from 'esbuild';
+const {code} = await transform(await readFile(new URL('../src/data/daily-review.ts', import.meta.url), 'utf8'), {loader:'ts', format:'esm'});
+const {ensureDailyReviewTask} = await import('data:text/javascript;base64,' + Buffer.from(code).toString('base64'));
+const config='潮线/每日复盘任务设置.json', template='潮线/模板/每日复盘任务.md';
+const files=new Map([[config, JSON.stringify({enabled:true,start_date:'2026-11-18'})], [template, '# {{date}} 每日复盘\n\n## 今天的记录\n']]);
+const file=path => files.has(path)?{path}:null;
+function fm(text){const h=text.startsWith('---\n')?text.split('---')[1]:'';return Object.fromEntries(h.split('\n').filter(x=>x.includes(':')).map(x=>{const i=x.indexOf(':');let v=x.slice(i+1).trim();try{v=JSON.parse(v);}catch{}return [x.slice(0,i),v];}));}
+const app={vault:{adapter:{exists:async p=>files.has(p),read:async p=>files.get(p)},getAbstractFileByPath:file,getFileByPath:file,read:async f=>files.get(f.path),create:async(p,s)=>{assert(!files.has(p));files.set(p,s);return file(p);},getMarkdownFiles:()=>[...files.keys()].filter(p=>p.endsWith('.md')).map(file),process:async(f,fn)=>files.set(f.path,fn(files.get(f.path)))},metadataCache:{getFileCache:f=>({frontmatter:fm(files.get(f.path))})},fileManager:{processFrontMatter:async(f,fn)=>{const old=files.get(f.path), data=fm(old);fn(data);files.set(f.path,'---\n'+Object.entries(data).map(([k,v])=>k+': '+JSON.stringify(v)).join('\n')+'\n---'+old.split('---').slice(2).join('---'));}}};
+const old='任务/完成每日复盘｜2026-11-17.md';
+files.set(old,'---\nstatus: open\nroutine_id: daily_review\nroutine_date: "2026-11-17"\n---\n原始历史正文不能丢失');
+files.set('任务/普通逾期任务.md','---\nstatus: open\nscheduled: "2026-11-14"\n---\n普通任务');
+files.set('日记/2026-11-18.md','---\neffort: {"Inference Learning": 1.8}\n---\n\n已有随手记与成就');
+await ensureDailyReviewTask(app,'2026-11-18');
+const path18='任务/完成每日复盘｜2026-11-18.md';assert(files.has(path18));assert(!('repeat' in fm(files.get(path18))));
+assert.equal(fm(files.get(old)).status,'cancelled');assert(files.get(old).includes('原始历史正文不能丢失'));assert(!('completed' in fm(files.get(old))));
+assert.equal(fm(files.get('任务/普通逾期任务.md')).status,'open');
+assert(files.get('日记/2026-11-18.md').includes('已有随手记与成就'));
+files.set(path18,files.get(path18)+'\n我在18日亲自写下的复盘。');
+const snapshot=new Map(files);await ensureDailyReviewTask(app,'2026-11-18');assert.deepEqual(files,snapshot);
+await ensureDailyReviewTask(app,'2026-11-20');
+assert(files.has('任务/完成每日复盘｜2026-11-20.md'));assert(!files.has('任务/完成每日复盘｜2026-11-19.md'));
+assert(files.get(path18).includes('我在18日亲自写下的复盘。'));assert(!files.get('任务/完成每日复盘｜2026-11-20.md').includes('我在18日亲自写下的复盘。'));
+assert(!('completed' in fm(files.get(path18))));
+console.log('PASS: dated daily tasks, no repeat/carryover/backfill, idempotence, preserved historical text and diary, unrelated tasks unchanged');

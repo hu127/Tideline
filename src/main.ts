@@ -8,6 +8,7 @@ import {CompassSettingTab, DEFAULT_AI, DEFAULT_DEVICE} from './settings.ts';
 import {PRESETS, PROVIDERS, resolveProvider, probe, createAcpSession} from './ai/acp.ts';
 import {zoteroInfo} from './data/zotero.ts';
 import {createCalendars} from './data/calendar.ts';
+import {ensureDailyReviewTask, installDailyReviewTasks} from './data/daily-review.ts';
 import type {Clock} from './data/types.ts';
 import type {AIProviderFactory, ModelOption, ProbeResult} from './ai/types.ts';
 import type {AISettings, CompassLeaf, CompassViewLike, LocalSettings, PluginSettings} from './plugin-types.ts';
@@ -66,6 +67,11 @@ export default class CompassPlugin extends Plugin {
     this.registerView(VIEW_TYPE, leaf => new CompassView(leaf, this));
     this.addRibbonIcon('waves', '打开潮线', () => this.activate());
     this.addCommand({id: 'open', name: '打开潮线', callback: () => this.activate()});
+    this.addCommand({id: 'open-daily-review', name: '打开今日复盘任务', callback: async () => {
+      const date = this.clock().date;
+      await ensureDailyReviewTask(this.app, date);
+      this.writer.open(`任务/完成每日复盘｜${date}.md`);
+    }});
     // 布局就绪时建一次索引；第一次 metadataCache 'resolved'（所有文件的属性都已缓存）时再建一次，补上启动时还没缓存好的文件。之后只跟着改动增量更新。
     const workspace = this.app.workspace;
     this.registerEvent(workspace.on('active-leaf-change', leaf => {
@@ -84,6 +90,7 @@ export default class CompassPlugin extends Plugin {
       const ref = this.app.metadataCache.on('resolved', async () => { this.app.metadataCache.offref(ref); await this.index.rebuild(); this.perf.indexMs = +this.index.stats.built.toFixed(1); });
       this.registerEvent(ref);
     });
+    installDailyReviewTasks(this);
     this.perf.loadMs = +(performance.now() - t0).toFixed(1);
   }
   onunload(){ this.index?.dispose(); }

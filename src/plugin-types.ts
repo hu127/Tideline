@@ -20,6 +20,8 @@ export interface DeviceSettings {
   week: boolean;
   /** 悬停功能提示 */
   tooltips: boolean;
+  wakeTime: string;
+  sleepTime: string;
 }
 
 /** AI 助手的设置（只存在这台设备上） */

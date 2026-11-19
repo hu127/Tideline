@@ -51,7 +51,7 @@ export function buildModel(index: IndexLike, clock: Clock, prev?: Model | null):
   d.tasks = [...ix.tasks.values()].map(t => {
     const projectId = t.project ? projId(t.project) : null;
     return {id: t.id, title: t.title, project: projectId ? t.project! : undefined, projectId, listId: t.list || null,
-      peopleIds: ids(ix.people, t.people), priority: t.priority, discuss: t.discuss || undefined, repeat: t.repeat || undefined, date: t.date, status: t.status,
+      peopleIds: ids(ix.people, t.people), priority: t.priority, discuss: t.discuss || undefined, repeat: t.repeat || undefined, date: t.repeat === "每天" && !["done", "cancelled"].includes(t.status) && t.date && t.date < date ? date : t.date, status: t.status,
       completed: t.completed || undefined, focus: t.focus || undefined, description: t.description, markdown: t.markdown, example: ex(t.id),
       order: t.order ?? undefined, parent: t.parent || undefined, pinned: t.pinned || undefined, tags: t.tags?.length ? [...t.tags] : [], time: t.time || undefined, remind: t.remind || undefined, mode: t.mode || undefined, comments: t.comments?.length ? [...t.comments] : []};
   });

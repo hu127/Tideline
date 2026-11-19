@@ -185,7 +185,7 @@ export class CompassView extends ItemView {
     this.hand = createHandFont();
     this.art = createR12Art({data: {clock: p.clock(), ui: {}, cache: {}}, ink, circle, icon});
     this.frame = buildFrame(this.root, this.hand);
-    this.today = createToday({root: this.root, art: this.art, ui: this.ui});
+    this.today = createToday({root: this.root, art: this.art, ui: this.ui, hours: () => this.plugin.local.device});
     this.todayReward = createTodayReward();
     // 输入法组字（拼音、五笔……）期间：整页不重画，也不让各页的 input 监听器处理半成品（原型的搜索框每打一下就重画并重设光标，
     // 会把组字打断，拼音字母留在框里）。组字结束时补发一次 input，再补上被挡下的重画。最先登记，排在所有监听器之前。

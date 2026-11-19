@@ -10,6 +10,7 @@
 // 结构、属性及其先后一一对应；用户写的文字（清单项、订阅名、文件夹……）直接成为文本节点或属性值。
 // 重画仍是“整张设置纸换成新的一张”（refresh：replaceWithNodes），保留滚动位置、is-still、密钥框、手绘框的重画与输入框聚焦，和原来一样。
 // 第 4b 期：pages/ai.js 转成 ai.ts，模型清单与默认模型有了类型，去掉这里的类型断言和自写的 ModelOption（已用不着）。
+import {awakeMinutes, timelineHours} from './timeline-hours.ts';
 import {PRESETS, PROVIDERS} from '../ai/acp.ts';
 import {providerName, modelsOf, defaultModelOf} from './ai.ts';
 import {SecretComponent} from 'obsidian';
@@ -67,6 +68,11 @@ export function createSettingsPage({view, plugin}: {view: CompassView; plugin: C
   // ——— 设备 ———
   function device(){ const D = dev();
     return [row('字号', [seg('device.font', [['.92', '小'], ['1', '标准'], ['1.1', '大'], ['1.2', '特大']], D.font), note('整个界面的文字一起放大或缩小，排版位置不变')]),
+      row('清醒时段', [h('form', {class: 'set-inline', 'data-settings-form': 'awake'},
+        h('input', {name: 'v', value: D.wakeTime, placeholder: '06:00', 'aria-label': '起床时间', size: 5}), ' 至 ',
+        h('input', {name: 'sleep', value: D.sleepTime, placeholder: '24:00', 'aria-label': '入睡时间', size: 5}),
+        h('button', {type: 'submit', class: 'set-mini hand-pill'}, '应用')),
+        note(`清醒 ${timelineHours(D.wakeTime, D.sleepTime).awake / 60} 小时；支持跨午夜。睡眠压缩显示，日程和随手记仍保留。`)], '本机'),
       row('配色', seg('device.theme', [['obsidian', '跟随 Obsidian'], ['paper', '纸'], ['night', '夜航']], D.theme)),
       row('过场', [seg('device.motion', [['brief', '滑动'], ['off', '关闭']], D.motion), note('换页时纸面上下滑动。系统开了“减少动态效果”时固定为关闭')]),
       row('打开时停在', seg('device.start', [['last', '上次所在的页'], ['today', '今日']], D.start)),
@@ -336,6 +342,12 @@ export function createSettingsPage({view, plugin}: {view: CompassView; plugin: C
   async function submit(f: HTMLFormElement){
     const k = f.dataset.settingsForm; if (!k) return false; const field = (n: string) => f.elements.namedItem(n) as HTMLInputElement;
     const [t, kind, i] = k.split('|'), v = field('v').value.trim();
+    if (t === 'awake') {
+      const sleep = field('sleep').value.trim(), a = awakeMinutes(v), b = awakeMinutes(sleep);
+      if (a === null || b === null || (b - a + 1440) % 1440 === 0) { view.frame.feedback('请输入有效且不同的起床和入睡时间，例如 07:30 和 23:30'); return true; }
+      dev().wakeTime = v; dev().sleepTime = sleep;
+      await plugin.saveSettings(); plugin.applyDevice(); refresh(); return true;
+    }
     if (t === 'sub') { const url = field('url').value.trim(); if (!url) { field('url').focus(); return true; }
       S.adding = null; S.subError = '';
       // 先当场取一次：失败就写出原因、不加进列表

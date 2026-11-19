@@ -11,6 +11,7 @@ import {sh, parts} from '../draw/scene.ts';
 import type {Part, Parts, Shape} from '../draw/scene.ts';
 import {maritimeArt} from '../draw/proto/paper-maritime-r14.ts';
 import {layoutTimelineLabels} from './timeline-labels.ts';
+import {timelineHours} from './timeline-hours.ts';
 import {timelineEntries} from './timeline-entries.ts';
 import type {createR12Art} from '../draw/proto/paper-r12-art.ts';
 import {walkVisible} from '../ui/visible.ts';
@@ -22,8 +23,7 @@ type R12Art = ReturnType<typeof createR12Art>;
 /** 一段文字所在的、各层滚动区可见范围的交集（ui/visible.js 的 walkVisible 给出；没有滚动区时 null） */
 interface Clip { top: number; bottom: number; left: number; right: number }
 
-const minutes = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
-const ratio = (s: string) => Math.max(0, Math.min(1, (minutes(s) - 360) / 1080));
+
 const smallCheck = (id: string, label: string, done = false) => h('button', {class: 'small-check', 'data-complete': id, 'aria-label': (done ? '重新打开' : '完成') + '：' + label}, iconEl(done ? 'check' : 'circle'));
 const mark = (ic: string, label: string, extra = '') => h('div', {class: `today-section-mark ${extra}`}, iconEl(ic), h('span', null, label));
 const md = (d: string) => `${Number(d.slice(5, 7))}月${Number(d.slice(8))}日`;
@@ -45,7 +45,7 @@ const breakAfterComma = (text: string): Child => { const i = text.indexOf('，')
 const subsection = (group: string, heading: HTMLDivElement, ...body: Child[]) => h('div', {class: 'today-subsection', 'data-today-group': group}, heading, body);
 const skeleton = () => [
   h('div', {class: 'above'}, h('div', {class: 'focus-section', id: 'focus'}), h('div', {class: 'other-tasks', id: 'other-tasks'})),
-  h('section', {class: 'timeline', id: 'timeline', 'aria-label': '6 点到 24 点的日程与随手记'}, h('div', {id: 'events'}), h('div', {id: 'time-ticks', class: 'time-ticks'})),
+  h('section', {class: 'timeline', id: 'timeline', 'aria-label': '日程与随手记时间轴'}, h('div', {id: 'events'}), h('div', {id: 'time-ticks', class: 'time-ticks'})),
   h('div', {id: 'event-mist', class: 'event-mist', role: 'tooltip', hidden: true}),
   h('div', {class: 'below'},
     h('div', {class: 'left-column'},
@@ -60,7 +60,9 @@ const skeleton = () => [
         h('form', {id: 'journal-form', class: 'line-form'}, h('input', {id: 'journal-input', placeholder: '想到了什么？', 'aria-label': '记下此刻想到的事', autocomplete: 'off'}))))),
 ];
 
-export function createToday({root, art, ui}: {root: HTMLElement; art: R12Art; ui: ViewUI}){
+export function createToday({root, art, ui, hours}: {root: HTMLElement; art: R12Art; ui: ViewUI; hours: () => {wakeTime: string; sleepTime: string}}){
+  const scale = () => timelineHours(hours().wakeTime, hours().sleepTime);
+  const ratio = (s: string) => scale().position(s);
   const sec = root.querySelector<HTMLElement>('#today')!, $ = <E extends Element = HTMLElement>(s: string) => sec.querySelector<E>(s), $$ = <E extends Element = HTMLElement>(s: string) => [...sec.querySelectorAll<E>(s)];
   setNodes(sec, skeleton);
   const last: Record<string, string> = {}; // 每块区域上次的输入
@@ -82,7 +84,10 @@ export function createToday({root, art, ui}: {root: HTMLElement; art: R12Art; ui
   let events: IndexEvent[] = [], drawnView: DayView | undefined, drawnDetail: string | null | undefined, drawnChooser: boolean | undefined;
   function render(v: DayView){
     const open = ui.detail;
-    if (drawnView === v && drawnDetail === open && drawnChooser === ui.chooseFocus) return;
+    const hoursKey = JSON.stringify(hours());
+    $('#timeline')!.setAttribute('aria-label', scale().label);
+    if (last.hours === hoursKey && drawnView === v && drawnDetail === open && drawnChooser === ui.chooseFocus) return;
+    last.hours = hoursKey;
     const entries = timelineEntries(v.date, v.events, v.journal);
     events = entries;
     const selected = open ? (v.focus.find(t => t.id === open) || v.other.find(t => t.id === open) || v.trail.find(t => t.id === open)) : undefined;
@@ -123,9 +128,9 @@ export function createToday({root, art, ui}: {root: HTMLElement; art: R12Art; ui
       return [h('div', {class: 'other-tasks-mark'}, art.symbolEl('checklist', 19), h('span', null, '其他任务')), h('div', {class: 'other-task-items'}, body)];
     });
     // 时间轴
-    put('events', entries, $('#events')!, () => entries.map(e => h('button', {class: `event${e.kind === 'journal' ? ' is-journal' : ''}`, 'data-event': e.id, style: `left:${ratio(e.time) * 100}%`, 'aria-label': `${e.kind === 'journal' ? '随手记：' : ''}${e.time} ${e.title}`},
+    put('events', [entries, hoursKey], $('#events')!, () => entries.map(e => h('button', {class: `event${e.kind === 'journal' ? ' is-journal' : ''}`, 'data-event': e.id, style: `left:${ratio(e.time) * 100}%`, 'aria-label': `${e.kind === 'journal' ? '随手记：' : ''}${e.time} ${e.title}`},
       h('span', {class: 'event-icon'}, e.kind === 'journal' ? iconEl('note') : buoyEl()), h('span', {class: 'event-copy'}, h('time', null, e.time), e.kind === 'journal' ? h('span', {class:'event-kind'}, '随记') : null, h('span', {class: 'event-title'}, e.title)))));
-    put('ticks', 1, $('#time-ticks')!, () => [6, 12, 18, 24].map((n, i) => h('span', {style: `left:${i / 3 * 100}%`}, n)));
+    put('ticks', hoursKey, $('#time-ticks')!, () => scale().ticks.map(t => h('span', {style: `left:${t.position * 100}%`}, t.time)));
     // 航迹、往年今日
     put('trail', [v.trail, v.nextUp, open], $('#trail')!, () => {
       const ex = selected; if (ex && ex.status === 'done') return detail(ex);
@@ -243,7 +248,7 @@ export function createToday({root, art, ui}: {root: HTMLElement; art: R12Art; ui
     const above = $('.above')!.getBoundingClientRect(), focus = $('#focus')!.getBoundingClientRect(), other = $('#other-tasks')!.getBoundingClientRect(), below = $('.below')!.getBoundingClientRect(), cols = columns();
     const side = other.left > focus.right - 1; // 聚焦与其他任务左右并排（窄视图 < 820 时上下排，不画竖线）
     const geo = [w, box.height, y, Math.round(focus.right), Math.round(other.left), Math.round(above.top - box.top), Math.round(above.bottom - box.top), Math.round(below.top - box.top), side, ...cols.map(c => Math.round(c.right) + ':' + Math.round(c.bottom))];
-    const key = JSON.stringify([geo, v.time, v.journal.map(n => n.time), v.allDone, v.events.length]);
+    const key = JSON.stringify([hours(), geo, v.time, v.journal.map(n => n.time), v.allDone, v.events.length]);
     const mask = obstacles(box, v.allDone); // 遮罩跟着文字走，便宜，不进缓存
     let body = sceneCache.get(key);
     if (!body) {

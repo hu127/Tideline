@@ -5,6 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const hours = spawnSync(process.execPath, [path.join(root, 'tools/test-timeline-hours.mjs')], {stdio: 'inherit', cwd: root});
+if (hours.status !== 0) process.exit(hours.status ?? 1);
 const timeline = spawnSync(process.execPath, [path.join(root, 'tools/test-timeline-labels.mjs')], {stdio: 'inherit', cwd: root});
 if (timeline.status !== 0) process.exit(timeline.status ?? 1);
 const entries = spawnSync(process.execPath, [path.join(root, 'tools/test-timeline-entries.mjs')], {stdio:'inherit', cwd:root});

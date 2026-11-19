@@ -1,3 +1,4 @@
+import {completionTimestamp, completionClock} from './completion-time.ts';
 // 笔记索引。页面只读这里，不直接扫仓库。
 // 启动时把各类笔记各解析一次；之后某个文件改了，只重新解析那一个文件，再通知订阅者。
 // 来源（source）由调用方给：Obsidian 里是 source-obsidian.ts，测试工具里是内存。来源要提供：
@@ -127,14 +128,14 @@ export class Index implements IndexLike {
   async load(path: string){
     const kind = kindOf(path), fm: Frontmatter = this.source.frontmatter(path) || {};
     if (kind === 'config') { this.config = this.parseConfig(fm); return; }
-    if (kind === 'calendar') { this.noteEvents = (fm.events || []).map((e: Frontmatter, i: number) => ({id: 'e' + i, date: date(e.date), time: String(e.time || ''), title: String(e.title || ''), description: e.description || ''})); return; }
+    if (kind === 'calendar') { this.noteEvents = (fm.events || []).map((e: Frontmatter, i: number) => ({id: 'e' + i, date: (e.status === 'done' ? completionClock(e.completed_at)?.date : null) || date(e.date), time: (e.status === 'done' ? completionClock(e.completed_at)?.time : null) || String(e.time || ''), title: String(e.title || ''), description: e.description || ''})); return; }
     const title = base(path);
     if (kind === 'project') { const text = await this.source.read(path);
       this.projects.set(path, {path, id: path, title, status: fm.status || 'active', due: date(fm.due), resume: date(fm.resume), completed: date(fm.completed),
         goals: links(fm.goals), people: links(fm.people), ideas: links(fm.ideas), literature: links(fm.literature),
         milestones: (fm.milestones || []).map((m: Frontmatter) => ({title: String(m.title), state: m.state || 'open'})), description: firstPara(text)}); return; }
     if (kind === 'task') { const text = await this.source.read(path), body = bodyOf(text).trim();
-      this.tasks.set(path, {path, id: path, title, status: fm.status || 'open', date: date(fm.scheduled), completed: date(fm.completed), focus: Number(fm.focus) || 0,
+      this.tasks.set(path, {path, id: path, title, status: fm.status || 'open', date: date(fm.scheduled), completed: date(fm.completed), completedAt: completionTimestamp(fm.completed_at), focus: Number(fm.focus) || 0,
         project: linkName(fm.project), list: fm.list ? String(fm.list) : null, people: links(fm.people), priority: fm.priority || 'medium',
         discuss: !!fm.discuss, repeat: fm.repeat ? String(fm.repeat) : null, markdown: body, description: firstPara(text),
         // 0.4：货单的手动顺序、父任务、置顶、标签、时刻与提醒（都可以不写）

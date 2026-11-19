@@ -8,3 +8,5 @@ This fork carries local enhancements independently of upstream PR acceptance.
 - Open daily recurring tasks use the current day in the task model without rewriting historical notes.
 
 Build: `npm ci && npm run typecheck && npm test && npm run build`. Output: `dist/`. Copy main.js, styles.css and manifest.json to the vault’s `.obsidian/plugins/tideline/`, preserving data.json. Reload Tideline afterwards.
+
+Completion metadata: `completed` remains YYYY-MM-DD; `completed_at` stores the actual ISO 8601 instant with explicit timezone. Task completion/reopen/undo preserve this contract. Completed calendar events with `completed_at` render and sort at the completion instant in device local time, independently of any scheduled/start time. Imported date-only history is not assigned a guessed completion time.

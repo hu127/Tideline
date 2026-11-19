@@ -8,10 +8,10 @@ import {dropTasks} from './trash.ts';
 import type {Model, ModelTask} from './types.ts';
 
 /** 任务完成、撤销时要放回去的那几个字段 */
-type Saved = Pick<ModelTask, 'status' | 'completed' | 'date' | 'markdown' | 'description'>;
+type Saved = Pick<ModelTask, 'status' | 'completed' | 'completedAt' | 'date' | 'markdown' | 'description'>;
 
 const closedTask =(t: Pick<ModelTask, 'status'>) => t.status === 'done' || t.status === 'cancelled';
-const KEYS = ['status', 'completed', 'date', 'markdown', 'description'] as const;
+const KEYS = ['status', 'completed', 'completedAt', 'date', 'markdown', 'description'] as const;
 const pick = (t: ModelTask): Saved => Object.fromEntries(KEYS.map(k => [k, t[k]])) as Saved;
 
 // 下一次（跳过今天及以前）；规则认不出时 null
@@ -23,19 +23,21 @@ function nextOccurrence(date: string | null | undefined, rule: string | null | u
 }
 
 export function completeTask(d: Model, t: ModelTask){
+  const completedAt = new Date().toISOString();
   const today = d.clock.date, next = nextOccurrence(t.date, t.repeat, today);
   const family = next ? [] : d.tasks.filter(x => x.parentId === t.id && !closedTask(x));
   const saved = [t, ...family].map(x => [x, pick(x)] as const);
   let record: ModelTask | null = null;
   if (next) {
-    record = {...t, id: 'task-' + d.serial++, status: 'done', completed: today, repeat: undefined, pinned: undefined, order: undefined, parentId: null,
+    record = {...t, id: 'task-' + d.serial++, status: 'done', completed: today, completedAt, repeat: undefined, pinned: undefined, order: undefined, parentId: null,
       peopleIds: [...(t.peopleIds || [])], tags: [...(t.tags || [])], comments: [...(t.comments || [])], focus: undefined};
     d.tasks.push(record);
+    t.completedAt = undefined;
     t.date = next;
     if (t.markdown) t.markdown = t.markdown.replace(/^(\s*[-*]\s+)\[[xX]\]/gm, '$1[ ]');
   } else {
-    t.status = 'done'; t.completed = today;
-    for (const k of family) { k.status = 'done'; k.completed = today; }
+    t.status = 'done'; t.completed = today; t.completedAt = completedAt;
+    for (const k of family) { k.status = 'done'; k.completed = today; k.completedAt = completedAt; }
   }
   const current = (x: ModelTask) => d.tasks.find(y => y.id === x.id) || x;
   return {next, record, family, undo(){
@@ -47,6 +49,6 @@ export function completeTask(d: Model, t: ModelTask){
 // 重新打开（今日页、任务页、项目页里点已完成的任务）
 export function reopenTask(d: Model, t: ModelTask){
   const saved = pick(t);
-  t.status = 'open'; t.completed = undefined;
+  t.status = 'open'; t.completed = undefined; t.completedAt = undefined;
   return {undo(){ Object.assign(d.tasks.find(y => y.id === t.id) || t, saved); }};
 }

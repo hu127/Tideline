@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {transform} from 'esbuild';
+process.env.TZ='Asia/Shanghai';
+const {code}=await transform(await readFile(new URL('../src/data/completion-time.ts',import.meta.url),'utf8'),{loader:'ts',format:'esm'});
+const {completionTimestamp,completionClock}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+assert.deepEqual(completionClock('2026-11-19T09:01:24.608718Z'),{date:'2026-11-19',time:'17:01'});
+assert.deepEqual(completionClock('2026-11-19T17:01:24.608718+08:00'),{date:'2026-11-19',time:'17:01'});
+assert.deepEqual(completionClock('2026-11-19T17:01:00Z'),{date:'2026-11-20',time:'01:01'});
+for(const x of ['2026-11-19','17:01','2026-11-19T17:01:24','invalid',null])assert.equal(completionTimestamp(x),undefined);
+console.log('PASS: explicit completion instant, UTC/offset equivalence, midnight date boundary, no guessed time from date-only values');

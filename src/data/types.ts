@@ -60,7 +60,7 @@ export type IndexTable = 'tasks' | 'projects' | 'people' | 'goals' | 'ideas' | '
 export interface IndexTask {
   path: string; id: string; title: string; status: string;
   /** scheduled 属性（YYYY-MM-DD） */
-  date: string | null; completed: string | null;
+  date: string | null; completed: string | null; completedAt?: string;
   /** 今日重点的顺序，0 = 不是重点 */
   focus: number;
   /** 所属项目的名称（链接去掉 [[ ]]） */
@@ -241,7 +241,7 @@ export interface ModelTask {
   /** 所属项目的名称（找得到项目时才有）与 id */
   project?: string; projectId: string | null; listId: string | null;
   peopleIds: string[]; priority: string; discuss?: boolean; repeat?: string;
-  date: string | null; status: string; completed?: string; focus?: number;
+  date: string | null; status: string; completed?: string; completedAt?: string; focus?: number;
   description: string; markdown: string; example: ExampleMark;
   order?: number;
   /** 建模型时的父任务名称，换成 parentId 后删掉 */

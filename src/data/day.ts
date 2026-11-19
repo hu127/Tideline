@@ -14,7 +14,7 @@ export function dayView(index: IndexLike, date: string, time: string): DayView{
   const tasks = [...index.tasks.values()], day: DayLike = index.days.get(date) || {habits: {}, scores: {}, effort: {}, journal: [], done: []};
   const focus = tasks.filter(t => t.focus && !done(t) && t.date === date).sort((a, b) => (a.status === 'in_progress' ? -1 : 0) - (b.status === 'in_progress' ? -1 : 0) || a.focus - b.focus);
   const other = tasks.filter(t => !(t.focus && t.date === date) && !done(t) && t.date && t.date <= date).sort((a, b) => a.date!.localeCompare(b.date!) || RANK[a.priority] - RANK[b.priority] || a.title.localeCompare(b.title, 'zh'));
-  const trail = tasks.filter(t => t.status === 'done' && (t.completed || t.date) === date);
+  const trail = tasks.filter(t => t.status === 'done' && (t.completed || t.date) === date).sort((a, b) => (a.completedAt ? Date.parse(a.completedAt) : Infinity) - (b.completedAt ? Date.parse(b.completedAt) : Infinity));
   const pool = tasks.filter(t => t.date === date || (t.date && t.date < date && (!done(t) || t.completed === date)));
   const todays = tasks.filter(t => t.date === date);
   const ex = index.examples || new Set(), real = (list: IndexTask[]) => ex.size ? list.filter(t => !ex.has(t.id)) : list, exampleDay = !!(day.path && ex.has(day.path));

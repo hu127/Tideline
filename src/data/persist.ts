@@ -61,7 +61,7 @@ function specs(d: Model): Record<EntityKind, Spec<Entity>>{
     // 0.9：人物（放在任务、项目之前：新人物的笔记先建好，链接再指过去）。initial 头像字、cadence 每隔几天联系；正文只管 ## 记录
     people: {folder: FOLDERS.people, nameKey: 'name', fm: (p: ModelPerson) => ({initial: p.initial, cadence: p.cadence || null}), body: (p: ModelPerson) => ({log: {'记录': (p.history || []).map(h => `- ${h.date ? h.date + ' ' : ''}${h.text}`)}})},
     tasks: {folder: FOLDERS.tasks, fm: (t: ModelTask) => ({status: t.status, scheduled: t.date || null, project: t.projectId ? link(title(d.projects, t.projectId)) : null, list: t.listId || null,
-      people: links(d.people, t.peopleIds, 'name'), priority: t.priority || 'medium', discuss: t.discuss || null, repeat: t.repeat || null, focus: t.focus || null, completed: t.status === 'done' ? t.completed || null : null,
+      people: links(d.people, t.peopleIds, 'name'), priority: t.priority || 'medium', discuss: t.discuss || null, repeat: t.repeat || null, focus: t.focus || null, completed: t.status === 'done' ? t.completed || null : null, completed_at: t.status === 'done' ? t.completedAt || null : null,
       order: Number.isFinite(t.order) ? t.order : null, parent: t.parentId ? link(title(d.tasks, t.parentId)) : null, pinned: t.pinned ? true : null,
       tags: t.example ? [...new Set(['example', ...(t.tags || [])])] : (t.tags || []), time: t.time || null, remind: t.time && t.remind ? t.remind : null, mode: t.mode === 'checklist' ? 'checklist' : null, comments: t.comments || []}),
       body: (t: ModelTask) => ({all: t.markdown ?? t.description ?? ''})},

@@ -129,7 +129,7 @@ export function createToday({root, art, ui, hours}: {root: HTMLElement; art: R12
     });
     // 时间轴
     put('events', [entries, hoursKey], $('#events')!, () => entries.map(e => h('button', {class: `event${e.kind === 'journal' ? ' is-journal' : ''}`, 'data-event': e.id, style: `left:${ratio(e.time) * 100}%`, 'aria-label': `${e.kind === 'journal' ? '随手记：' : ''}${e.time} ${e.title}`},
-      h('span', {class: 'event-icon'}, e.kind === 'journal' ? iconEl('note') : buoyEl()), h('span', {class: 'event-copy'}, h('time', null, e.time), e.kind === 'journal' ? h('span', {class:'event-kind'}, '随记') : null, h('span', {class: 'event-title'}, e.title)))));
+      h('span', {class: 'event-icon'}, e.kind === 'journal' ? iconEl('note') : buoyEl()), h('span', {class: 'event-copy'}, h('time', null, e.endTime && e.endTime !== e.time ? `${e.time}–${e.endTime}` : e.time), e.kind === 'journal' ? h('span', {class:'event-kind'}, '随记') : null, h('span', {class: 'event-title'}, e.title)))));
     put('ticks', hoursKey, $('#time-ticks')!, () => scale().ticks.map(t => h('span', {style: `left:${t.position * 100}%`}, t.time)));
     // 航迹、往年今日
     put('trail', [v.trail, v.nextUp, open], $('#trail')!, () => {

@@ -66,6 +66,7 @@ export function createEventMist({view}: {view: CompassView}){
   }
 
   const closest = (t: EventTarget | null, s: string) => (t as Element | null)?.closest?.<HTMLElement>(s) ?? null;
+  view.registerDomEvent(root, 'click', e => { const b = closest(e.target, '[data-event]'); if (b) { dismissed = null; show(b.dataset.event!, 'keyboard'); } });
   view.registerDomEvent(root, 'pointerover', e => { const b = closest(e.target, '[data-event]'); if (b) show(b.dataset.event!); else if (closest(e.target, '#event-mist')) clearTimeout(leaveTimer); });
   view.registerDomEvent(root, 'pointerout', e => {
     const b = closest(e.target, '[data-event]'); if (b && !b.contains(e.relatedTarget as Node | null)) { dismissed = null; deferHide(); return; }
